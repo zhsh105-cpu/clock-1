@@ -1,0 +1,1146 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>计时器</title>
+<style>
+  :root {
+    --bg: #0e1210;
+    --bg-panel: #151b18;
+    --ink: #eef2ee;
+    --ink-dim: #8fa094;
+    --line: #2a352e;
+    --accent: #5fd9a0;
+    --accent-ink: #08130d;
+    --danger: #e05c5c;
+    font-family: -apple-system, 'SF Pro Text', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  }
+  :root:not([data-theme="light"]) { color-scheme: dark; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f3f5f2; --bg-panel: #ffffff; --ink: #14201a; --ink-dim: #5b6f63;
+      --line: #d5ddd6; --accent: #1f8f5f; --accent-ink: #ffffff; --danger: #c14343;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f3f5f2; --bg-panel: #ffffff; --ink: #14201a; --ink-dim: #5b6f63;
+    --line: #d5ddd6; --accent: #1f8f5f; --accent-ink: #ffffff; --danger: #c14343;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; min-height: 100%;
+    background: var(--bg); color: var(--ink);
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { display: flex; justify-content: center; padding: 10px 32px 10px; }
+
+  .frame { width: calc(100% / 0.8); max-width: 1750px; display: flex; flex-direction: column; gap: 8px; transform: scale(0.8); transform-origin: top center; }
+  .num { font-variant-numeric: tabular-nums; font-family: inherit; }
+
+  .card { background: var(--bg-panel); border: 1px solid var(--line); border-radius: 14px; }
+
+  /* 顶部当地时间 */
+  .clockbar { padding: 8px 20px; text-align: center; position: relative; }
+  .clockbar .c-time { font-size: 28px; font-weight: 600; color: var(--accent); line-height: 1.1; }
+  .clockbar .c-sub { font-size: 12px; color: var(--ink-dim); margin-top: 2px; min-height: 14px; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 8px; align-items: stretch; }
+  .col-main, .col-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .col-side { position: relative; }
+  
+  .switcher { display: flex; padding: 4px; gap: 4px; border-radius: 999px; }
+  .switcher button {
+    flex: 1; padding: 10px 0; border: none; background: transparent; color: var(--ink-dim);
+    font: inherit; font-size: 15px; border-radius: 999px; cursor: pointer;
+    transition: background .2s ease, color .2s ease;
+  }
+  .switcher button.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+  .stage { padding: 36px 28px 32px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+  .display-wrap { position: relative; width: var(--ring); height: var(--ring); display: flex; align-items: center; justify-content: center; }
+  svg.ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); shape-rendering: geometricPrecision; }
+  svg.ring circle { fill: none; stroke-width: 6; }
+  .ring-track { stroke: var(--line); }
+  .ring-progress { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .3s linear, stroke .3s ease; }
+  .ring-progress.danger { stroke: var(--danger); }
+
+  .time-num { font-size: 60px; font-weight: 600; z-index: 1; text-align: center; line-height: 1.1; }
+  .time-ms { font-size: 22px; color: var(--ink-dim); display: block; margin-top: 4px; font-weight: 400; }
+
+  .status-label { font-size: 13px; color: var(--ink-dim); min-height: 16px; }
+
+  .controls { display: flex; gap: 12px; width: 100%; justify-content: center; }
+  .btn {
+    font: inherit; font-size: 15px; padding: 12px 20px; border-radius: 12px;
+    border: 1px solid var(--line); background: transparent; color: var(--ink);
+    cursor: pointer; min-width: 92px; transition: transform .12s ease, background .2s ease, border-color .2s ease;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .btn.danger-outline { border-color: var(--danger); color: var(--danger); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .laps { width: 100%; max-height: 60px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .lap-row { display: flex; flex-direction: column; align-items: center; text-align: center; font-size: 14px; color: var(--ink-dim); padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  .lap-row span:first-child { color: var(--ink); }
+
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .preset-row button {
+    font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 10px;
+    border: 1px solid var(--line); background: transparent; color: var(--ink-dim); cursor: pointer;
+  }
+  .preset-row button:hover { border-color: var(--accent); color: var(--ink); }
+
+  .set-form { display: flex; align-items: center; gap: 6px; justify-content: center; }
+  .set-form input {
+    width: 60px; text-align: center; font: inherit; font-size: 24px; background: transparent;
+    border: none; border-bottom: 2px solid var(--line); color: var(--ink); padding: 4px 0;
+    font-family: inherit;
+  }
+  .set-form input:focus { outline: none; border-color: var(--accent); }
+  .set-form .colon { font-size: 24px; color: var(--ink-dim); }
+
+  .sound-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-dim); justify-content: center; }
+  .sound-toggle input { accent-color: var(--accent); }
+
+  #stopwatch-stage .controls, #stopwatch-stage .laps { display: none; }
+  .hidden { display: none !important; }
+
+  /* 圆环四角数据 */
+  .zone { position: relative; display: flex; flex-direction: column; --pt: 36px; --ring: 340px; --ch: 48px; }
+  .corners { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  .stat { position: absolute; width: 130px; height: var(--ch); display: flex; flex-direction: column; justify-content: center; }
+  .stat .t-rl { display: block; font-size: 12px; font-weight: 300; color: var(--ink-dim); letter-spacing: 0.06em; line-height: 1.2; }
+  .stat .t-rv { display: block; margin-top: 3px; font-size: 17px; font-weight: 300; line-height: 1.15; }
+  .stat.tl, .stat.bl { left: 24px; text-align: left; }
+  .stat.tr, .stat.br { right: 24px; text-align: right; }
+  .stat.tl, .stat.tr { top: var(--pt); }
+  .stat.bl, .stat.br { top: calc(var(--pt) + var(--ring) - var(--ch)); }
+
+  .session { padding: 12px 18px; display: flex; align-items: baseline; justify-content: center; gap: 14px; }
+  .session .t-rl { font-size: 15px; color: var(--ink-dim); letter-spacing: 0.06em; }
+  .session .t-rv { font-size: 32px; font-weight: 700; color: var(--accent); }
+
+  body { padding-left: 12px; padding-right: 12px; }
+  :root { --ring: 220px; }
+  .stage { padding: 12px 16px 12px; }
+  .display-wrap { width: min(var(--ring), 100%); height: auto; aspect-ratio: 1; }
+  .time-num { font-size: min(clamp(34px, 6vw, 60px), calc(var(--ring) * 0.2)); }
+  .side-panel { padding: 4px 18px 8px; }
+  .side-title { font-size: 12px; color: var(--ink-dim); letter-spacing: 0.1em; padding: 6px 0 2px; }
+  .side-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  .side-row:last-child { border-bottom: none; }
+  .side-row .t-rl { font-size: 15px; color: var(--ink-dim); letter-spacing: 0.06em; white-space: nowrap; }
+  .side-row .t-rv { font-size: clamp(16px, 2.6vw, 24px); font-weight: 500; }
+  .col-side .side-row { padding: 12px 0; }
+  .stats-card { flex: 1; display: flex; flex-direction: column; }
+  .col-side .stats-card .side-row { flex: 1; align-items: center; padding: 12px 0; }
+  .col-side .stats-card .side-title { flex: none; }
+  /* 统计列表：在列表内部滚动，一次只显示一项（滚动吸附） */
+  .stats-card { --stat-h: 275px; }
+  .stats-list { position: relative; flex: none; height: var(--stat-h); }
+  .stats-scroll { height: 100%; overflow: hidden; scrollbar-width: none; -ms-overflow-style: none; outline: none; border-radius: 10px; }
+  .stats-scroll::-webkit-scrollbar { display: none; }
+  .stats-scroll:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+  .stat-item { height: var(--stat-h); scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  .stat-item .t-rl { font-size: 18px; color: var(--ink-dim); letter-spacing: 0.06em; white-space: nowrap; }
+  .stat-item .t-rv { font-size: clamp(40px, 6vw, 64px); font-weight: 600; line-height: 1.1; }
+  .stats-dots { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; }
+  .stats-dots button { width: 8px; height: 8px; padding: 0; border: none; border-radius: 50%; background: var(--line); cursor: pointer; transition: background .2s ease, transform .2s ease; }
+  .stats-dots button:hover { background: var(--ink-dim); }
+  .stats-dots button.active { background: var(--accent); transform: scale(1.4); }
+  /* 统计：折叠为一行（循环滚动），展开后列出全部 */
+  .stats-card { --stat-h: 56px; }
+  .stats-dots { display: none; }
+  .stat-item { flex-direction: row; justify-content: space-between; align-items: center; gap: 12px; padding: 0 4px; }
+  .stat-item .t-rl { font-size: 15px; }
+  .stat-item .t-rv { font-size: clamp(16px, 2.6vw, 24px); font-weight: 500; line-height: 1.2; }
+  #stats-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  #stats-toggle .arrow { width: 22px; height: 22px; flex: none; color: var(--ink-dim); transition: transform .2s ease; }
+  #stats-toggle[aria-expanded="true"] .arrow { transform: rotate(180deg); }
+  #stats-toggle:hover .arrow { color: var(--accent); }
+  /* 统计居中 */
+  .stat-item { justify-content: center; gap: 16px; }
+  #stats-toggle > span { flex: 1; text-align: center; padding-left: 22px; }
+  .stats-card .side-row.session-row { justify-content: center; gap: 16px; }
+  .stats-card.expanded .stats-list { height: auto; }
+  .stats-card.expanded .stats-scroll { height: auto; overflow: visible; scroll-snap-type: none; }
+  .stats-card.expanded .stat-item { border-bottom: 1px solid var(--line); }
+  .stats-card.expanded .stat-item.stat-clone { display: none; }
+  .stats-card.expanded .stat-item:nth-last-child(2) { border-bottom: none; }
+  .daily-card { width: 100%; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; overflow: hidden; }
+  .daily-left { min-width: 0; padding: 4px 24px 8px; }
+  .daily-right { min-width: 0; padding: 4px 24px 8px; border-left: 1px solid var(--line);
+    background: color-mix(in srgb, var(--accent) 9%, var(--bg-panel)); }
+  /* 底部左右两半：标题、标签、数值统一字体字号 */
+  .daily-card .side-title { font-size: 20px; color: var(--ink); letter-spacing: 0.04em; padding: 8px 0 6px; }
+  .daily-card .day-row .t-rl, .daily-card .day-row .t-open, .daily-card .day-row .t-rv { font-size: 20px; font-weight: 500; color: var(--ink); letter-spacing: 0; font-family: inherit; }
+  .daily-card .day-row .t-open { padding: 0 4px; }
+  .daily-card .day-row { padding: 5px 0; align-items: center; }
+  #open-list { max-height: none; overflow: visible; }
+  .day-row .t-open { flex: 1; text-align: center; font-size: 13px; color: var(--ink-dim); padding: 0 8px; white-space: nowrap; }
+  #daily-list { display: flex; flex-direction: column; width: 100%; }
+  /* 折叠：只显示今天，其余日期点箭头展开 */
+  #daily-list:not(.expanded) .day-row:not(.today) { display: none; }
+  #daily-toggle, #open-title { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  #daily-toggle .arrow, #open-title .arrow { width: 22px; height: 22px; flex: none; color: var(--ink-dim); transition: transform .2s ease; }
+  #daily-toggle[aria-expanded="true"] .arrow, #open-title[aria-expanded="true"] .arrow { transform: rotate(180deg); }
+  #daily-toggle:hover .arrow, #open-title:hover .arrow { color: var(--accent); }
+  /* 今日打开：折叠时只显示最新一行 */
+  #open-list:not(.expanded) .day-row:not(:first-child) { display: none; }
+  .day-row { padding: 3px 0; width: 100%; }
+  .day-row .t-rl { font-size: 14px; }
+  #daily-list .day-row.today { background: rgba(255, 214, 64, 0.22); border-radius: 8px; padding-left: 8px; padding-right: 8px; margin: 0 -8px; width: calc(100% + 16px); border-bottom-color: transparent; }
+  #daily-list .day-row.today .t-rl, #daily-list .day-row.today .t-rv { color: var(--ink); }
+  .day-row .t-rv { font-size: clamp(14px, 2.2vw, 18px); }
+  .side-row.session-row .t-rv { font-size: clamp(20px, 3.4vw, 30px); font-weight: 700; color: var(--accent); }
+
+  /* 提示弹窗 */
+  .modal-mask {
+    position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; left: 16px;
+    display: flex; justify-content: center; pointer-events: none; z-index: 100;
+  }
+  .modal {
+    transform: scale(0.8); transform-origin: top center;
+    pointer-events: auto; background: var(--bg-panel); border: 1px solid var(--accent);
+    border-left: 5px solid var(--accent); border-radius: 14px; padding: 16px 18px 14px;
+    width: 100%; max-width: 320px; text-align: center;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  }
+  .modal h2 { margin: 0 0 6px; font-size: 18px; color: var(--accent); }
+  .modal p { margin: 0 0 12px; font-size: 14px; color: var(--ink-dim); line-height: 1.5; }
+  .modal .btn { padding: 8px 16px; min-width: 0; font-size: 14px; }
+  .alert-list { max-height: 120px; overflow-y: auto; margin: 0 0 12px; display: flex; flex-direction: column; gap: 4px; }
+  .alert-list div { font-size: 13px; color: var(--ink-dim); padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; }
+  .alert-list div b { color: var(--ink); font-weight: 500; }
+
+  /* 统计面板：统一字号并放大 */
+  .col-side, .stats-card { --stat-fs: 18px; --stat-h: 56px; }
+  .stats-card .side-title,
+  .stats-card #stats-toggle > span,
+  .stats-card .side-row .t-rl,
+  .stats-card .side-row.session-row .t-rv,
+  .stats-card .stat-item .t-rl,
+  .stats-card .stat-item .t-rv {
+    font-size: var(--stat-fs); line-height: 1.2; letter-spacing: 0.02em;
+  }
+  .stats-card .side-title { color: var(--ink); font-weight: 500; }
+  .stats-card .side-row.session-row .t-rv { font-weight: 500; }
+  .col-side .stats-card .side-row.session-row { flex: none; height: var(--stat-h); padding: 0 4px; }
+  .stats-card #stats-toggle .arrow { width: 28px; height: 28px; }
+  .stats-card #stats-toggle > span { padding-left: 28px; }
+
+  /* 本周每天用时 + 今日打开：并入统计卡片，竖向排列 */
+  .col-side .daily-card.merged { grid-template-columns: minmax(0, 1fr); margin-top: 0; border-top: none; }
+  .col-side .daily-card.merged .daily-left, .col-side .daily-card.merged .daily-right { padding: 4px 0 8px; }
+  .col-side .daily-card.merged .daily-right { border-left: none; border-top: 1px solid var(--line); background: transparent; }
+  .col-side .daily-card.merged .side-title { font-size: var(--stat-fs); }
+  .col-side .daily-card.merged .day-row .t-rl, .col-side .daily-card.merged .day-row .t-open, .col-side .daily-card.merged .day-row .t-rv { font-size: var(--stat-fs); }
+  .col-side .col-side .daily-card.merged .side-row { flex: none; padding: 5px 0; }
+  /* 右栏：上下均分（上：统计；下：本周每天用时 + 今日打开） */
+  .col-side { display: grid; grid-template-rows: auto 1fr; gap: 8px; }
+  .col-side > .card { min-height: 0; }
+  .stats-bottom { display: flex; flex-direction: column; }
+  .stats-bottom .daily-card.merged { flex: 1; }
+  /* 标题栏：页面打开以来的使用时间，满 45 分钟变红 */
+  .titlebar { display: flex; justify-content: center; align-items: baseline; gap: 14px; padding: 8px 20px; transition: border-color .3s ease; }
+  .titlebar .tb-l { font-size: 15px; color: var(--ink-dim); letter-spacing: 0.06em; transition: color .3s ease; }
+  .titlebar .tb-v { font-size: 28px; font-weight: 600; color: var(--accent); line-height: 1.1; transition: color .3s ease; }
+  .titlebar.alert { border-color: var(--danger); }
+  .titlebar.alert .tb-l, .titlebar.alert .tb-v { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <div class="card clockbar">
+    <div class="c-time num" id="clk-local">--:--</div>
+    <div class="c-sub" id="clk-local-sub"></div>
+  </div>
+
+
+  <div class="card titlebar" id="usage-bar">
+    <span class="tb-l">本次时间</span>
+    <span class="tb-v num" id="usage-time">00:00:00</span>
+  </div>
+
+  <main class="layout">
+
+    <!-- 左：计时主区 -->
+    <section class="col-main">
+      <div class="card switcher">
+        <button id="tab-stopwatch" class="active">正计时</button>
+        <button id="tab-countdown">倒计时</button>
+      </div>
+
+      <div class="zone">
+      <!-- 正计时 -->
+      <div class="card stage" id="stopwatch-stage">
+        <div class="display-wrap">
+          <svg class="ring" viewBox="0 0 240 240">
+            <circle class="ring-track" cx="120" cy="120" r="108"></circle>
+            <circle class="ring-progress" id="sw-ring" cx="120" cy="120" r="108"
+              stroke-dasharray="678.6" stroke-dashoffset="0"></circle>
+          </svg>
+          <div class="time-num num">
+            <span id="sw-time">00:00</span>
+          </div>
+        </div>
+        <div class="status-label" id="sw-status">页面打开后自动开始</div>
+        <div class="controls">
+          <button class="btn primary" id="sw-start">开始</button>
+          <button class="btn" id="sw-lap" disabled>记圈</button>
+          <button class="btn danger-outline" id="sw-reset">重置</button>
+        </div>
+        <div class="laps num" id="sw-laps"></div>
+      </div>
+
+      <!-- 倒计时 -->
+      <div class="card stage hidden" id="countdown-stage">
+        <div class="display-wrap">
+          <svg class="ring" viewBox="0 0 240 240">
+            <circle class="ring-track" cx="120" cy="120" r="108"></circle>
+            <circle class="ring-progress" id="cd-ring" cx="120" cy="120" r="108"
+              stroke-dasharray="678.6" stroke-dashoffset="0"></circle>
+          </svg>
+          <div class="time-num num"><span id="cd-time">05:00</span></div>
+        </div>
+        <div class="status-label" id="cd-status">设置好时间后开始</div>
+
+        <div class="set-form" id="cd-set-form">
+          <input type="number" id="cd-h" min="0" max="23" value="0" aria-label="小时">
+          <span class="colon">:</span>
+          <input type="number" id="cd-m" min="0" max="59" value="5" aria-label="分钟">
+          <input type="number" id="cd-s" min="0" max="59" value="0" aria-label="秒" hidden>
+        </div>
+
+        <div class="preset-row" id="cd-presets">
+          <button data-sec="60">1 分钟</button>
+          <button data-sec="180">3 分钟</button>
+          <button data-sec="300">5 分钟</button>
+          <button data-sec="600">10 分钟</button>
+          <button data-sec="1500">25 分钟</button>
+        </div>
+
+        <div class="controls">
+          <button class="btn primary" id="cd-start">开始</button>
+          <button class="btn" id="cd-pause" disabled>暂停</button>
+          <button class="btn danger-outline" id="cd-reset">重置</button>
+        </div>
+
+        <div class="sound-toggle">
+          <input type="checkbox" id="cd-sound" checked>
+          <label for="cd-sound">结束时播放提示声</label>
+        </div>
+      </div>
+      </div>
+
+    </section>
+
+    <!-- 右：统计区 -->
+    <aside class="col-side">
+      <div class="card side-panel stats-card">
+        <div class="side-title" id="stats-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="stats-scroll">
+          <span>统计</span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="stats-list">
+          <div class="stats-scroll" id="stats-scroll" tabindex="0" aria-label="统计列表，滚动查看">
+            <div class="stat-item"><span class="t-rl">今日</span><span class="t-rv num" id="u-day">00:00</span></div>
+            <div class="stat-item"><span class="t-rl">本周</span><span class="t-rv num" id="u-week">00:00</span></div>
+            <div class="stat-item"><span class="t-rl">本月</span><span class="t-rv num" id="u-month">00:00</span></div>
+                        <div class="stat-item"><span class="t-rl">总累计</span><span class="t-rv num" id="total-time">00:00</span></div>
+          </div>
+          <div class="stats-dots" id="stats-dots" aria-hidden="true">
+            <button tabindex="-1" title="今日"></button>
+            <button tabindex="-1" title="本周"></button>
+            <button tabindex="-1" title="本月"></button>
+            <button tabindex="-1" title="总累计"></button>
+          </div>
+        </div>
+      </div>
+      <div class="card side-panel stats-bottom">
+        <div class="daily-card merged">
+          <div class="daily-left">
+            <div class="side-title" id="daily-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="daily-list">
+              <span>本周每天用时</span>
+              <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div id="daily-list"></div>
+          </div>
+          <div class="daily-right">
+            <div class="side-title" id="open-title" role="button" tabindex="0" aria-expanded="false" aria-controls="open-list">
+              <span id="open-title-text">今日打开</span>
+              <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div id="open-list"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+
+</div>
+
+  <!-- 15 分钟提示弹窗 -->
+  <div class="modal-mask hidden" id="sw-modal" role="dialog" aria-modal="true" aria-labelledby="sw-modal-title">
+    <div class="modal">
+      <h2 id="sw-modal-title" class="num">⏰ 15:00</h2>
+      <div class="alert-list num" id="sw-alert-list"></div>
+      <button class="btn primary" id="sw-modal-ok">知道了</button>
+    </div>
+  </div>
+
+
+<script>
+(function(){
+  const CIRC = 2 * Math.PI * 108;
+  const PAGE_TS = Date.now();                 // 页面打开时刻：始终使用时间从这里算起，不受暂停/重置影响
+  const USAGE_ALERT_MS = 45 * 60 * 1000;      // 满 45 分钟变红
+
+  // ---------- 时钟表盘：刻度 + 指针 ----------
+  function buildDial(svg) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const g = document.createElementNS(NS, 'g');
+    for (let i = 0; i < 60; i++) {
+      const major = i % 5 === 0;
+      const a = i * Math.PI / 30;
+      const r1 = major ? 88 : 95, r2 = 101;
+      const ln = document.createElementNS(NS, 'line');
+      ln.setAttribute('x1', 120 + r1 * Math.cos(a)); ln.setAttribute('y1', 120 + r1 * Math.sin(a));
+      ln.setAttribute('x2', 120 + r2 * Math.cos(a)); ln.setAttribute('y2', 120 + r2 * Math.sin(a));
+      ln.setAttribute('stroke-linecap', 'round');
+      ln.style.stroke = major ? 'var(--ink-dim)' : 'var(--line)';
+      ln.style.strokeWidth = major ? '2.4' : '1.2';
+      g.appendChild(ln);
+    }
+    const hand = document.createElementNS(NS, 'g');
+    const hl = document.createElementNS(NS, 'line');
+    hl.setAttribute('x1', 120 + 72); hl.setAttribute('y1', 120);
+    hl.setAttribute('x2', 120 + 103); hl.setAttribute('y2', 120);
+    hl.setAttribute('stroke-linecap', 'round');
+    hl.style.stroke = 'var(--accent)'; hl.style.strokeWidth = '3';
+    const hd = document.createElementNS(NS, 'circle');
+    hd.setAttribute('cx', 120 + 108); hd.setAttribute('cy', 120); hd.setAttribute('r', 6);
+    hd.style.fill = 'var(--accent)'; hd.style.stroke = 'var(--bg-panel)'; hd.style.strokeWidth = '2';
+    hand.appendChild(hl); hand.appendChild(hd);
+    svg.appendChild(g); svg.appendChild(hand);
+    return function(deg) { hand.setAttribute('transform', 'rotate(' + deg + ' 120 120)'); };
+  }
+  const swHand = buildDial(document.querySelector('#stopwatch-stage svg.ring'));
+  const cdHand = buildDial(document.querySelector('#countdown-stage svg.ring'));
+
+  // ---------- 音频提示 ----------
+  let audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e) { audioCtx = null; }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function beep(freq, dur, delay, vol) {
+    if (!audioCtx) return;
+    const t0 = audioCtx.currentTime + delay;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol, t0 + 0.02);
+    gain.gain.linearRampToValueAtTime(0, t0 + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  }
+  function playAlarm() {
+    ensureAudio();
+    if (!audioCtx) return;
+    // 三声上扬提示音
+    beep(880, 0.18, 0,   0.28);
+    beep(880, 0.18, 0.26, 0.28);
+    beep(1175, 0.32, 0.52, 0.30);
+  }
+  function playTick() {
+    ensureAudio();
+    if (!audioCtx) return;
+    beep(660, 0.05, 0, 0.12);
+  }
+
+  // ---------- Tab 切换 ----------
+  const tabSW = document.getElementById('tab-stopwatch');
+  const tabCD = document.getElementById('tab-countdown');
+  const stageSW = document.getElementById('stopwatch-stage');
+  const stageCD = document.getElementById('countdown-stage');
+  tabSW.addEventListener('click', () => {
+    tabSW.classList.add('active'); tabCD.classList.remove('active');
+    stageSW.classList.remove('hidden'); stageCD.classList.add('hidden');
+  });
+  tabCD.addEventListener('click', () => {
+    tabCD.classList.add('active'); tabSW.classList.remove('active');
+    stageCD.classList.remove('hidden'); stageSW.classList.add('hidden');
+  });
+
+  // ================= 正计时 (Stopwatch) =================
+  let swRunning = false;
+  let swStartTs = 0;
+  let swElapsed = 0; // ms accumulated before current run
+  let swRaf = null;
+  let swLapCount = 0;
+  let swLastLapElapsed = 0;
+
+  const swTimeEl = document.getElementById('sw-time');
+  const swStatus = document.getElementById('sw-status');
+  const swStartBtn = document.getElementById('sw-start');
+  const swLapBtn = document.getElementById('sw-lap');
+  const swResetBtn = document.getElementById('sw-reset');
+  const swLapsEl = document.getElementById('sw-laps');
+  const swRing = document.getElementById('sw-ring');
+  swRing.style.strokeDasharray = CIRC;
+
+  function fmtStopwatch(ms) {
+    const totalMs = Math.floor(ms);
+    const cs = Math.floor((totalMs % 1000) / 10);
+    const totalSec = Math.floor(totalMs / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const main = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    return { main, cs: String(cs).padStart(2,'0') };
+  }
+
+  function swRender() {
+    const elapsed = swRunning ? swElapsed + (Date.now() - swStartTs) : swElapsed;
+    const {main, cs} = fmtStopwatch(elapsed);
+    swTimeEl.textContent = main;
+    // ring sweeps every 60s
+    const cyclePos = (elapsed % 60000) / 60000;
+    swRing.style.strokeDashoffset = CIRC * (1 - cyclePos);
+    swHand(cyclePos * 360);
+  }
+
+  // ---- 使用累计时间：总累计 + 每日记录（用于 今日/本周/本月）----
+  const USAGE_KEY = 'timer_usage_v2';
+  const OLD_KEY = 'timer_total_v1';
+  const totalTimeEl = document.getElementById('total-time');
+  const uDay = document.getElementById('u-day');
+  const uWeek = document.getElementById('u-week');
+  const uMonth = document.getElementById('u-month');
+  const dailyListEl = document.getElementById('daily-list');
+  const dailyRows = [];
+  const openListEl = document.getElementById('open-list');
+  const OPENDAYS_KEY = 'timer_opendays_v1';
+  let openDays = {};
+  for (let i = 0; i < 7; i++) {
+    const row = document.createElement('div');
+    row.className = 'side-row day-row';
+    row.innerHTML = '<span class="t-rl"></span><span class="t-rv num">00:00</span>';
+    dailyListEl.appendChild(row);
+    dailyRows.push({ row: row, l: row.children[0], v: row.children[1] });
+  }
+  const dailyToggle = document.getElementById('daily-toggle');
+  function toggleDaily() {
+    const open = dailyListEl.classList.toggle('expanded');
+    dailyToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  dailyToggle.addEventListener('click', toggleDaily);
+  dailyToggle.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDaily(); }
+  });
+  const WK = ['周日','周一','周二','周三','周四','周五','周六'];
+  function renderDaily() {
+    const now = new Date(); now.setHours(0,0,0,0);
+    const todayK = dayKey(now);
+    const monday = new Date(now);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));   // 本周周一
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday); d.setDate(monday.getDate() + i);   // 周一 → 周日
+      const label = (d.getMonth()+1) + '/' + d.getDate() + ' ' + WK[d.getDay()];
+      setText(dailyRows[i].l, 'dl' + i, label);
+      setText(dailyRows[i].v, 'dv' + i, fmtHMS(usage.days[dayKey(d)] || 0));
+      dailyRows[i].row.classList.toggle('today', dayKey(d) === todayK);
+    }
+  }
+
+  function dayKey(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function loadUsage() {
+    const u = { total: 0, days: {} };
+    try {
+      const o = JSON.parse(localStorage.getItem(USAGE_KEY) || 'null');
+      if (o && typeof o.total === 'number') {
+        u.total = o.total;
+        u.days = o.days || {};
+        return u;
+      }
+      // 迁移旧版数据（只有总累计和今日）
+      const old = JSON.parse(localStorage.getItem(OLD_KEY) || 'null');
+      if (old && typeof old.ms === 'number') {
+        u.total = old.ms;
+        if (typeof old.dayMs === 'number' && old.date) {
+          const parts = old.date.split('-');
+          const k = parts[0] + '-' + parts[1].padStart(2,'0') + '-' + parts[2].padStart(2,'0');
+          u.days[k] = old.dayMs;
+        }
+      }
+    } catch(e) {}
+    return u;
+  }
+  const usage = loadUsage();
+  let lastAccrual = 0;
+
+  function pruneDays() {
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 400);
+    const ck = dayKey(cutoff);
+    Object.keys(usage.days).forEach(k => { if (k < ck) delete usage.days[k]; });
+  }
+  function saveUsage() {
+    try { pruneDays(); localStorage.setItem(USAGE_KEY, JSON.stringify(usage)); } catch(e) {}
+  }
+  // 把「上次结算至今」的运行时间记到当天
+  function accrue() {
+    if (!swRunning) return;
+    const now = Date.now();
+    const delta = now - lastAccrual;
+    lastAccrual = now;
+    if (delta <= 0) return;
+    const k = dayKey(new Date(now));
+    usage.days[k] = (usage.days[k] || 0) + delta;
+    usage.total += delta;
+  }
+  function swSessionMs() {
+    return swRunning ? swElapsed + (Date.now() - swStartTs) : swElapsed;
+  }
+  function fmtHMS(ms) {
+    const t = Math.floor(ms / 1000);
+    return String(Math.floor(t/3600)).padStart(2,'0') + ':' +
+           String(Math.floor((t%3600)/60)).padStart(2,'0');
+  }
+  function fmtHMSs(ms) {   // 本次时间：带秒，能看到它在走
+    const t = Math.floor(ms / 1000);
+    return String(Math.floor(t/3600)).padStart(2,'0') + ':' +
+           String(Math.floor((t%3600)/60)).padStart(2,'0') + ':' +
+           String(t%60).padStart(2,'0');
+  }
+  function periodSums() {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    const todayK = dayKey(now);
+    const mon = new Date(now); mon.setHours(0,0,0,0);
+    mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));   // 本周从周一开始
+    const weekK = dayKey(mon);
+    const monthPrefix = y + '-' + String(m+1).padStart(2,'0');
+    let day = 0, week = 0, month = 0;
+    for (const k in usage.days) {
+      const v = usage.days[k];
+      if (k === todayK) day += v;
+      if (k >= weekK && k <= todayK) week += v;
+      if (k.slice(0,7) === monthPrefix) month += v;
+    }
+    return { day, week, month };
+  }
+  const shown = {};
+  function setText(el, key, text) {
+    if (shown[key] !== text) { shown[key] = text; el.textContent = text; }
+  }
+  const usageEl = document.getElementById('usage-time');
+  const usageBar = document.getElementById('usage-bar');
+  // 浏览器标签页标题同步显示使用时间；满 45 分钟加红点（标签页标题无法设颜色，用 🔴 代替）
+  function usageTitle() {
+    const ms = Date.now() - PAGE_TS;
+    return (ms >= USAGE_ALERT_MS ? '🔴 ' : '') + fmtHMSs(ms) + ' · 计时器';
+  }
+  function renderTotal() {
+    accrue();
+    setText(totalTimeEl, 't', fmtHMS(usage.total));
+    const usedMs = Date.now() - PAGE_TS;
+    setText(usageEl, 'use', fmtHMSs(usedMs));
+    usageBar.classList.toggle('alert', usedMs >= USAGE_ALERT_MS);
+    document.title = usageTitle();
+    const p = periodSums();
+    setText(uDay, 'd', fmtHMS(p.day));
+    setText(uDayClone, 'd2', fmtHMS(p.day));
+    setText(uWeek, 'w', fmtHMS(p.week));
+    setText(uMonth, 'm', fmtHMS(p.month));
+    renderDaily();
+    const now = Date.now();
+    if (now - lastSaveTs > 5000) { lastSaveTs = now; saveUsage(); }
+  }
+  let lastSaveTs = 0;
+  setInterval(renderTotal, 250);
+  window.addEventListener('pagehide', () => { accrue(); saveUsage(); });
+  document.addEventListener('visibilitychange', () => { renderTotal(); });
+
+  // ---- 统计列表：内部滚动，一次显示一项；右侧圆点指示当前项，可点击跳转 ----
+  const statsScroll = document.getElementById('stats-scroll');
+  const statsDots = Array.from(document.querySelectorAll('#stats-dots button'));
+  const STAT_N = statsDots.length;
+  // 循环滚动：在末尾追加第一项的副本，滚到副本后瞬间跳回顶部（视觉上不回滚）
+  const statsClone = statsScroll.firstElementChild.cloneNode(true);
+  statsClone.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+  statsClone.setAttribute('aria-hidden', 'true');
+  statsClone.classList.add('stat-clone');
+  statsScroll.appendChild(statsClone);
+  const uDayClone = statsClone.querySelector('.t-rv');
+  function syncStatsDots() {
+    const h = statsScroll.clientHeight || 1;
+    if (statsScroll.scrollTop >= STAT_N * h - 2) { statsScroll.scrollTop = 0; }
+    const idx = Math.round(statsScroll.scrollTop / h) % STAT_N;
+    statsDots.forEach((d, k) => d.classList.toggle('active', k === idx));
+  }
+  function goStat(k) {
+    k = Math.max(0, Math.min(STAT_N, k));
+    statsScroll.scrollTo({ top: k * statsScroll.clientHeight, behavior: 'smooth' });
+  }
+  function curStat() {
+    return Math.round(statsScroll.scrollTop / (statsScroll.clientHeight || 1)) % STAT_N;
+  }
+  statsDots.forEach((d, k) => d.addEventListener('click', () => goStat(k)));
+  // 滚轮：滚一格就切到下一项（避免小幅滚动被吸附回原位）；到头后让页面自己滚动
+  let statsWheelLock = false;
+  const statsCard = document.querySelector('.stats-card');
+  const statsToggle = document.getElementById('stats-toggle');
+  const statsExpanded = () => statsCard.classList.contains('expanded');
+  function toggleStats() {
+    const o = statsCard.classList.toggle('expanded');
+    statsToggle.setAttribute('aria-expanded', o ? 'true' : 'false');
+    statsScroll.scrollTop = 0;
+    syncStatsDots();
+    alignRing();
+  }
+  statsToggle.addEventListener('click', toggleStats);
+  statsToggle.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleStats(); }
+  });
+  syncStatsDots();
+
+  // ---- 每隔 15 分钟提醒一次，并显示累计时间 ----
+  const SW_ALERT_MS = 15 * 60 * 1000;
+  let swAlertedCount = 0;
+  const swModal = document.getElementById('sw-modal');
+  document.getElementById('sw-modal-ok').addEventListener('click', () => {
+    swModal.classList.add('hidden');
+  });
+
+  function swCheckAlert() {
+    if (!swRunning) return;
+    const elapsed = swElapsed + (Date.now() - swStartTs);
+    const n = Math.floor(elapsed / SW_ALERT_MS);
+    if (n > swAlertedCount) {
+      // 页面在后台被挂起时可能一次跨过多个 15 分钟，只提醒一次并显示最新累计
+      swAlertedCount = n;
+      swShowAlert(n * SW_ALERT_MS, n);
+    }
+  }
+
+  function swShowAlert(ms, n) {
+    const total = fmtStopwatch(ms).main;
+    const text = total;
+    document.getElementById('sw-modal-title').textContent = '⏰ ' + total;
+    // 累计显示：每次提醒都追加一行记录，最新的在最上面
+    const list = document.getElementById('sw-alert-list');
+    const row = document.createElement('div');
+    const nowStr = new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    row.innerHTML = '<span><b>' + total + '</b></span><span>' + nowStr + '</span>';
+    list.insertBefore(row, list.firstChild);
+    swModal.classList.remove('hidden');
+    playTick();
+  }
+
+  // 从后台切回前台时立即补检查
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { swCheckAlert(); if (swRunning) swRender(); }
+  });
+
+  function swTick() {
+    swRender();
+    swCheckAlert();
+    swRaf = setTimeout(swTick, 40);
+  }
+
+  swStartBtn.addEventListener('click', () => {
+    ensureAudio();
+    if (!swRunning) {
+      swRunning = true;
+      swStartTs = Date.now();
+      lastAccrual = swStartTs;
+      swStartBtn.textContent = '暂停';
+      swStartBtn.classList.remove('primary');
+      swLapBtn.disabled = false;
+      swStatus.textContent = '计时中…';
+      swTick();
+    } else {
+      accrue();
+      swRunning = false;
+      swElapsed += Date.now() - swStartTs;
+      clearTimeout(swRaf);
+      saveUsage();
+      swStartBtn.textContent = '继续';
+      swStartBtn.classList.add('primary');
+      swLapBtn.disabled = true;
+      swStatus.textContent = '已暂停';
+    }
+  });
+
+  swLapBtn.addEventListener('click', () => {
+    const now = Date.now();
+    const elapsed = swElapsed + (now - swStartTs);
+    swLapCount += 1;
+    const lapDuration = elapsed - swLastLapElapsed;
+    swLastLapElapsed = elapsed;
+    const {main: totalMain, cs: totalCs} = fmtStopwatch(elapsed);
+    const {main: lapMain, cs: lapCs} = fmtStopwatch(lapDuration);
+    const row = document.createElement('div');
+    row.className = 'lap-row';
+    row.innerHTML = `<span>圈 ${swLapCount} · +${lapMain}</span><span>${totalMain}</span>`;
+    swLapsEl.insertBefore(row, swLapsEl.firstChild);
+  });
+
+  swResetBtn.addEventListener('click', () => {
+    accrue();   // 重置前先把这一轮结算进累计
+    swRunning = false;
+    clearTimeout(swRaf);
+    swElapsed = 0;
+    swLapCount = 0;
+    swLastLapElapsed = 0;
+    swTimeEl.textContent = '00:00';
+    swRing.style.strokeDashoffset = 0;
+    swHand(0);
+    swStartBtn.textContent = '开始';
+    swStartBtn.classList.add('primary');
+    swLapBtn.disabled = true;
+    swStatus.textContent = '准备就绪';
+    swLapsEl.innerHTML = '';
+    swAlertedCount = 0;
+    document.getElementById('sw-alert-list').innerHTML = '';
+    swModal.classList.add('hidden');
+    renderTotal();
+    saveUsage();
+  });
+
+  // ================= 倒计时 (Countdown) =================
+  let cdTotalMs = 5 * 60 * 1000;
+  let cdRemainingMs = cdTotalMs;
+  let cdEndAt = 0;      // 绝对结束时间戳 (Date.now() 基准)，切到后台也不会失准
+  let cdRunning = false;
+  let cdRaf = null;
+  let cdFinished = false;
+  let cdLastWholeSecond = null;
+  const cdTimeEl = document.getElementById('cd-time');
+  const cdStatus = document.getElementById('cd-status');
+  const cdStartBtn = document.getElementById('cd-start');
+  const cdPauseBtn = document.getElementById('cd-pause');
+  const cdResetBtn = document.getElementById('cd-reset');
+  const cdRing = document.getElementById('cd-ring');
+  const cdSetForm = document.getElementById('cd-set-form');
+  const cdPresets = document.getElementById('cd-presets');
+  const cdSoundToggle = document.getElementById('cd-sound');
+  const hInput = document.getElementById('cd-h');
+  const mInput = document.getElementById('cd-m');
+  const sInput = document.getElementById('cd-s');
+  cdRing.style.strokeDasharray = CIRC;
+
+  function fmtCountdown(ms) {
+    const totalMin = Math.max(0, Math.ceil(ms / 60000));
+    return String(Math.floor(totalMin / 60)).padStart(2,'0') + ':' + String(totalMin % 60).padStart(2,'0');
+  }
+
+  function readInputsToMs() {
+    const h = Math.max(0, Math.min(23, parseInt(hInput.value || '0', 10) || 0));
+    const m = Math.max(0, Math.min(59, parseInt(mInput.value || '0', 10) || 0));
+    const s = Math.max(0, Math.min(59, parseInt(sInput.value || '0', 10) || 0));
+    return (h * 3600 + m * 60 + s) * 1000;
+  }
+
+  function msToInputs(ms) {
+    const totalSec = Math.round(ms / 1000);
+    hInput.value = Math.floor(totalSec / 3600);
+    mInput.value = Math.floor((totalSec % 3600) / 60);
+    sInput.value = totalSec % 60;
+  }
+
+  function updateCdDisplay() {
+    cdTimeEl.textContent = fmtCountdown(cdRemainingMs);
+    const frac = cdTotalMs > 0 ? cdRemainingMs / cdTotalMs : 0;
+    cdRing.style.strokeDashoffset = CIRC * (1 - Math.max(0, frac));
+    cdHand(Math.max(0, frac) * 360);
+    cdRing.classList.toggle('danger', cdRemainingMs <= 10000 && cdRemainingMs > 0);
+  }
+
+  [hInput, mInput, sInput].forEach(inp => {
+    inp.addEventListener('change', () => {
+      if (!cdRunning) {
+        cdTotalMs = readInputsToMs();
+        cdRemainingMs = cdTotalMs;
+        updateCdDisplay();
+      }
+    });
+  });
+
+  cdPresets.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-sec]');
+    if (!btn || cdRunning) return;
+    const sec = parseInt(btn.dataset.sec, 10);
+    cdTotalMs = sec * 1000;
+    cdRemainingMs = cdTotalMs;
+    msToInputs(cdTotalMs);
+    updateCdDisplay();
+  });
+
+  function cdTick() {
+    if (!cdRunning) return;
+    cdRemainingMs = cdEndAt - Date.now();
+
+    const wholeSecond = Math.ceil(cdRemainingMs / 1000);
+    if (wholeSecond !== cdLastWholeSecond) {
+      cdLastWholeSecond = wholeSecond;
+      if (cdSoundToggle.checked && wholeSecond > 0 && wholeSecond <= 3) {
+        playTick();
+      }
+    }
+
+    if (cdRemainingMs <= 0) {
+      cdRemainingMs = 0;
+      updateCdDisplay();
+      finishCountdown();
+      return;
+    }
+    updateCdDisplay();
+    cdRaf = setTimeout(cdTick, 200);
+  }
+
+  function finishCountdown() {
+    cdRunning = false;
+    cdFinished = true;
+    clearTimeout(cdRaf);
+    cdStatus.textContent = '时间到！';
+    cdStartBtn.textContent = '重新开始';
+    cdStartBtn.disabled = false;
+    cdPauseBtn.disabled = true;
+    if (cdSoundToggle.checked) {
+      playAlarm();
+    }
+  }
+
+  // 页面从后台切回前台时，立刻用绝对时间戳补算一次，
+  // 避免浏览器在后台标签页里把定时器完全挂起导致的误差；
+  // 如果倒计时其实已经在后台结束，这里会立刻补放提示音。
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && cdRunning) {
+      ensureAudio();
+      cdTick();
+    }
+  });
+
+  cdStartBtn.addEventListener('click', () => {
+    ensureAudio();
+    if (cdFinished) {
+      cdFinished = false;
+      cdRemainingMs = cdTotalMs;
+      updateCdDisplay();
+    }
+    if (cdRemainingMs <= 0) {
+      cdTotalMs = readInputsToMs();
+      cdRemainingMs = cdTotalMs;
+      if (cdTotalMs <= 0) {
+        cdStatus.textContent = '请先设置大于 0 的时间';
+        updateCdDisplay();
+        return;
+      }
+    }
+    cdRunning = true;
+    cdEndAt = Date.now() + cdRemainingMs;
+    cdLastWholeSecond = null;
+    cdStartBtn.disabled = true;
+    cdPauseBtn.disabled = false;
+    cdSetForm.style.opacity = '0.4';
+    cdSetForm.querySelectorAll('input').forEach(i => i.disabled = true);
+    cdStatus.textContent = '倒计时中…（切到其他标签页也会继续）';
+    cdTick();
+  });
+
+  cdPauseBtn.addEventListener('click', () => {
+    cdRunning = false;
+    cdRemainingMs = Math.max(0, cdEndAt - Date.now());
+    clearTimeout(cdRaf);
+    cdStartBtn.disabled = false;
+    cdStartBtn.textContent = '继续';
+    cdPauseBtn.disabled = true;
+    cdStatus.textContent = '已暂停';
+  });
+
+  cdResetBtn.addEventListener('click', () => {
+    cdRunning = false;
+    cdFinished = false;
+    clearTimeout(cdRaf);
+    cdTotalMs = readInputsToMs();
+    cdRemainingMs = cdTotalMs;
+    updateCdDisplay();
+    cdStartBtn.disabled = false;
+    cdStartBtn.textContent = '开始';
+    cdPauseBtn.disabled = true;
+    cdSetForm.style.opacity = '1';
+    cdSetForm.querySelectorAll('input').forEach(i => i.disabled = false);
+    cdStatus.textContent = '设置好时间后开始';
+  });
+
+  updateCdDisplay();
+
+  // ---------- 顶部时钟：当地 ----------
+  function fmtClock(d, tz) {
+    const opt = { hour12: false, hour: '2-digit', minute: '2-digit' };
+    if (tz) opt.timeZone = tz;
+    return new Intl.DateTimeFormat('en-GB', opt).format(d);
+  }
+  function fmtClockDay(d, tz) {
+    const opt = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
+    if (tz) opt.timeZone = tz;
+    return new Intl.DateTimeFormat('zh-CN', opt).format(d);
+  }
+  function renderClocks() {
+    const n = new Date();
+    const rows = [
+      ['clk-local', 'clk-local-sub', undefined]
+    ];
+    rows.forEach(([t, s, tz]) => {
+      try {
+        document.getElementById(t).textContent = fmtClock(n, tz);
+        document.getElementById(s).textContent = fmtClockDay(n, tz);
+      } catch (e) {}
+    });
+  }
+  renderClocks();
+  setInterval(renderClocks, 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') renderClocks();
+  });
+
+  // ---------- 当日打开次数 ----------
+  (function(){
+    const KEY = 'timer_opens_v1';
+    const todayK = dayKey(new Date());
+    let rec = { date: todayK, count: 0 };
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (o && o.date === todayK && typeof o.count === 'number') rec = o;
+    } catch(e) {}
+    rec.count += 1;
+    try { localStorage.setItem(KEY, JSON.stringify(rec)); } catch(e) {}
+
+    // 每天的打开记录：每次打开记「打开时间 s / 截止时间 e」，截止时间在页面开着时持续更新
+    try { openDays = JSON.parse(localStorage.getItem(OPENDAYS_KEY) || '{}') || {}; } catch(e) { openDays = {}; }
+    const nowTs = Date.now();
+    const rd = openDays[todayK] || {};
+    if (!Array.isArray(rd.sessions)) {   // 迁移旧版（只有 HH:MM:SS 文本）
+      rd.sessions = (rd.times || []).map(t => {
+        const p = String(t).split(':').map(Number);
+        const d = new Date(); d.setHours(p[0] || 0, p[1] || 0, p[2] || 0, 0);
+        return { s: d.getTime(), e: null };
+      });
+    }
+    const prevCount = typeof rd.count === 'number' ? rd.count : rd.sessions.length;
+    delete rd.times;
+    rd.sessions.push({ s: nowTs, e: nowTs });
+    rd.count = prevCount + 1;
+    if (rd.sessions.length > 50) rd.sessions = rd.sessions.slice(-50);
+    openDays[todayK] = rd;
+    const cut = new Date(); cut.setDate(cut.getDate() - 400);
+    const ck = dayKey(cut);
+    Object.keys(openDays).forEach(k => { if (k < ck) delete openDays[k]; });
+    function saveOpens() { try { localStorage.setItem(OPENDAYS_KEY, JSON.stringify(openDays)); } catch(e) {} }
+    saveOpens();
+
+    const cur = rd.sessions[rd.sessions.length - 1];
+    const fmtHM = ms => { const m = Math.floor(ms / 60000); return String(Math.floor(m / 60)).padStart(2,'0') + ':' + String(m % 60).padStart(2,'0'); };
+    const fmtT = ts => { const d = new Date(ts); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
+    document.getElementById('open-title-text').textContent = '今日打开 ' + rd.count + ' 次';
+    const openTitle = document.getElementById('open-title');
+    function toggleOpen() {
+      const o = openListEl.classList.toggle('expanded');
+      openTitle.setAttribute('aria-expanded', o ? 'true' : 'false');
+    }
+    openTitle.addEventListener('click', toggleOpen);
+    openTitle.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOpen(); }
+    });
+    const total = rd.sessions.length;
+    let curMid = null, curVal = null;
+    for (let i = total - 1; i >= 0; i--) {
+      const ss = rd.sessions[i];
+      const row = document.createElement('div');
+      row.className = 'side-row day-row';
+      const idx = rd.count - (total - 1 - i);
+      row.innerHTML = '<span class="t-rl">' + idx + '</span><span class="t-open num"></span><span class="t-rv num"></span>';
+      const mid = row.children[1], val = row.children[2];
+      mid.textContent = fmtT(ss.s) + ' – ' + (ss.e ? fmtT(ss.e) : '—');
+      val.textContent = ss.e ? fmtHM(ss.e - ss.s) : '—';
+      if (ss === cur) { curMid = mid; curVal = val; }
+      openListEl.appendChild(row);
+    }
+    // 当前这次：截止时间和时长实时更新
+    setInterval(() => {
+      cur.e = Date.now();
+      curMid.textContent = fmtT(cur.s) + ' – ' + fmtT(cur.e);
+      curVal.textContent = fmtHM(cur.e - cur.s);
+    }, 1000);
+    setInterval(saveOpens, 5000);
+    window.addEventListener('pagehide', () => { cur.e = Date.now(); saveOpens(); });
+  })();
+
+  // ---------- 圆圈大小：底边与统计面板最后一行（今日打开）底边对齐 ----------
+  const UI_SCALE = 0.8;
+  let ghost = null;
+  function alignRing() {
+    const fr = document.querySelector('.frame');
+    if (fr) fr.style.marginBottom = (-fr.offsetHeight * (1 - UI_SCALE)) + 'px';
+    const side = document.querySelector('.col-side');
+    if (!side) return;
+    if (ghost) ghost.remove();
+    ghost = document.createElement('div');
+    ghost.setAttribute('aria-hidden', 'true');
+    side.querySelectorAll(':scope > .card').forEach(c => {
+      const k = c.cloneNode(true);
+      k.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+      ghost.appendChild(k);
+    });
+    ghost.style.cssText = 'position:absolute;top:0;left:0;right:0;display:grid;grid-template-rows:auto 1fr;gap:8px;visibility:hidden;pointer-events:none;';
+    side.appendChild(ghost);
+    const stage = stageSW.classList.contains('hidden') ? stageCD : stageSW;
+    const wrap = stage.querySelector('.display-wrap');
+    if (!wrap) return;
+    const natBottom = ghost.getBoundingClientRect().bottom - 9 * UI_SCALE;
+    const size = Math.round((natBottom - wrap.getBoundingClientRect().top) / UI_SCALE);
+    if (size < 80) return;
+    const v = Math.min(size, 340) + 'px';
+    if (document.documentElement.style.getPropertyValue('--ring') !== v) {
+      document.documentElement.style.setProperty('--ring', v);
+    }
+  }
+  alignRing();
+  window.addEventListener('resize', alignRing);
+  window.addEventListener('load', alignRing);
+  tabSW.addEventListener('click', alignRing);
+  tabCD.addEventListener('click', alignRing);
+  setInterval(alignRing, 500);
+
+  // 打开网页后自动开始正计时（秒表）
+  window.addEventListener('load', () => {
+    swStartBtn.click();
+  });
+})();
+</script>
+</body>
+</html>
+
+</body></html>
