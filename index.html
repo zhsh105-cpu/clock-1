@@ -657,9 +657,16 @@
   const usageEl = document.getElementById('usage-time');
   const usageBar = document.getElementById('usage-bar');
   // 浏览器标签页标题同步显示使用时间；满 45 分钟加红点（标签页标题无法设颜色，用 🔴 代替）
+  // 标签页标题每 3 秒在「本次时间」和「当天日期 + 星期」之间交替
   function usageTitle() {
     const ms = Date.now() - PAGE_TS;
-    return (ms >= USAGE_ALERT_MS ? '🔴 ' : '') + fmtHMSs(ms) + ' · 计时器';
+    const red = ms >= USAGE_ALERT_MS ? '🔴 ' : '';
+    const showDate = Math.floor((Date.now() - PAGE_TS) / 3000) % 2 === 1;
+    if (showDate) {
+      const d = new Date();
+      return red + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + WK[d.getDay()] + ' · 计时器';
+    }
+    return red + fmtHMSs(ms) + ' · 计时器';
   }
   function renderTotal() {
     accrue();
