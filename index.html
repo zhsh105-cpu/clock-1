@@ -189,13 +189,13 @@
   .day-row .t-open { flex: 1; text-align: center; font-size: 13px; color: var(--ink-dim); padding: 0 8px; white-space: nowrap; }
   #daily-list { display: flex; flex-direction: column; width: 100%; }
   /* 折叠：只显示今天，其余日期点箭头展开 */
-  #daily-list:not(.expanded) .day-row:not(.today) { display: none; }
+  .dl-list:not(.expanded) .day-row:not(.today) { display: none; }
   #daily-toggle, #open-title { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; -webkit-user-select: none; }
   #daily-toggle .arrow, #open-title .arrow { width: 22px; height: 22px; flex: none; color: var(--ink-dim); transition: transform .2s ease; }
   #daily-toggle[aria-expanded="true"] .arrow, #open-title[aria-expanded="true"] .arrow { transform: rotate(180deg); }
   #daily-toggle:hover .arrow, #open-title:hover .arrow { color: var(--accent); }
   /* 今日打开：折叠时只显示最新一行 */
-  #open-list:not(.expanded) .day-row:not(:first-child) { display: none; }
+  .ol-list:not(.expanded) .day-row:not(:first-child) { display: none; }
   .day-row { padding: 3px 0; width: 100%; }
   .day-row .t-rl { font-size: 14px; }
   #daily-list .day-row.today { background: rgba(255, 214, 64, 0.22); border-radius: 8px; padding-left: 8px; padding-right: 8px; margin: 0 -8px; width: calc(100% + 16px); border-bottom-color: transparent; }
@@ -274,6 +274,11 @@
   .memo-body:empty::before { content: attr(data-ph); color: var(--ink-dim); pointer-events: none; }
   .memo-body img { max-width: 100%; max-height: 300px; border-radius: 8px; display: block; margin: 6px 0; }
   .memo-hint { font-size: 12px; color: var(--ink-dim); padding-top: 6px; }
+  /* Class-based copies of the toggle-row styles so the hidden measuring clone (ids stripped) has the same height */
+  .tg { display: flex; align-items: center; justify-content: space-between; }
+  .tg .arrow { width: 22px; height: 22px; flex: none; }
+  .stats-card .tg .arrow { width: 28px; height: 28px; }
+  .stats-card .tg > span { flex: 1; text-align: center; padding-left: 28px; }
 </style>
 </head>
 <body>
@@ -366,7 +371,7 @@
     <!-- 右：统计区 -->
     <aside class="col-side">
       <div class="card side-panel stats-card">
-        <div class="side-title" id="stats-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="stats-scroll">
+        <div class="side-title tg" id="stats-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="stats-scroll">
           <span>统计</span>
           <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
@@ -388,18 +393,18 @@
       <div class="card side-panel stats-bottom">
         <div class="daily-card merged">
           <div class="daily-left">
-            <div class="side-title" id="daily-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="daily-list">
+            <div class="side-title tg" id="daily-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="daily-list">
               <span>本周每天用时</span>
               <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
-            <div id="daily-list"></div>
+            <div id="daily-list" class="dl-list"></div>
           </div>
           <div class="daily-right">
-            <div class="side-title" id="open-title" role="button" tabindex="0" aria-expanded="false" aria-controls="open-list">
+            <div class="side-title tg" id="open-title" role="button" tabindex="0" aria-expanded="false" aria-controls="open-list">
               <span id="open-title-text">今日打开</span>
               <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
-            <div id="open-list"></div>
+            <div id="open-list" class="ol-list"></div>
           </div>
         </div>
       </div>
