@@ -241,7 +241,8 @@
   /* 本周每天用时 + 今日打开：并入统计卡片，竖向排列 */
   .col-side .daily-card.merged { grid-template-columns: minmax(0, 1fr); margin-top: 0; border-top: none; }
   .col-side .daily-card.merged .daily-left, .col-side .daily-card.merged .daily-right { padding: 4px 0 8px; }
-  .col-side .daily-card.merged .daily-right { border-left: none; border-top: 1px solid var(--line); background: transparent; }
+  .col-side .daily-card.merged .daily-right { border-left: none; border-top: none; background: transparent; order: 1; }
+  .col-side .daily-card.merged .daily-left { order: 2; border-top: 1px solid var(--line); }
   .col-side .daily-card.merged .side-title { font-size: var(--stat-fs); }
   .col-side .daily-card.merged .day-row .t-rl, .col-side .daily-card.merged .day-row .t-open, .col-side .daily-card.merged .day-row .t-rv { font-size: var(--stat-fs); }
   .col-side .col-side .daily-card.merged .side-row { flex: none; padding: 5px 0; }
@@ -279,6 +280,18 @@
   .tg .arrow { width: 22px; height: 22px; flex: none; }
   .stats-card .tg .arrow { width: 28px; height: 28px; }
   .stats-card .tg > span { flex: 1; text-align: center; padding-left: 28px; }
+  /* 右栏：缩小行间距；备忘放到右栏最底部 */
+  .col-side { grid-template-rows: auto auto auto; gap: 6px; }
+  .col-side .stats-card { --stat-h: 38px; }
+  .col-side .side-row, .col-side .stats-card .side-row { padding: 3px 0; }
+  .col-side .stats-card .side-row.session-row { height: var(--stat-h); }
+  .col-side .stats-card .side-title, .col-side .daily-card.merged .side-title { padding: 3px 0 2px; }
+  .col-side .daily-card.merged .side-row, .col-side .daily-card.merged .day-row { padding: 2px 0; }
+  .col-side .daily-card.merged .daily-left, .col-side .daily-card.merged .daily-right { padding-top: 2px; padding-bottom: 4px; }
+  .col-side .memo-card { padding: 6px 14px 8px; }
+  .col-side .memo-head { padding: 2px 0 6px; }
+  .col-side .memo-body { min-height: 90px; max-height: 240px; }
+
 </style>
 </head>
 <body>
@@ -408,12 +421,7 @@
           </div>
         </div>
       </div>
-    </aside>
-
-  </main>
-
-  <!-- 底栏：备忘 -->
-  <div class="card memo-card" id="memo-card">
+    <div class="card memo-card" id="memo-card">
     <div class="memo-head">
       <span class="m-title">备忘</span>
       <div class="m-tools">
@@ -426,6 +434,11 @@
     <div class="memo-body" id="memo-body" contenteditable="true" spellcheck="false" data-ph="在这里写备忘，可粘贴或插入图片，自动保存。写上时间（如 14:30 或 3点半）到点时标签页标题会滚动 15 秒"></div>
     <div class="memo-hint">图片点选后按 Delete / 退格键可删除</div>
   </div>
+    </aside>
+
+  </main>
+
+
 
 </div>
 
@@ -1155,7 +1168,7 @@
     if (ghost) ghost.remove();
     ghost = document.createElement('div');
     ghost.setAttribute('aria-hidden', 'true');
-    side.querySelectorAll(':scope > .card').forEach(c => {
+    side.querySelectorAll(':scope > .card:not(.memo-card)').forEach(c => {
       const k = c.cloneNode(true);
       k.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
       ghost.appendChild(k);
