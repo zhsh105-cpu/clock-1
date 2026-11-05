@@ -211,15 +211,15 @@
   .modal {
     transform: scale(0.8); transform-origin: top center;
     pointer-events: auto; background: var(--bg-panel); border: 1px solid var(--accent);
-    border-left: 5px solid var(--accent); border-radius: 14px; padding: 16px 18px 14px;
-    width: 100%; max-width: 640px; text-align: center;
+    border-left: 5px solid var(--accent); border-radius: 14px; padding: 10px 14px 10px;
+    width: fit-content; min-width: 0; max-width: calc(100% - 8px); text-align: center;
     box-shadow: 0 8px 28px rgba(0,0,0,0.35);
   }
-  .modal h2 { margin: 0 0 6px; font-size: 36px; color: var(--accent); }
-  .modal p { margin: 0 0 12px; font-size: 28px; color: var(--ink-dim); line-height: 1.5; }
-  .modal .btn { padding: 12px 28px; min-width: 0; font-size: 28px; }
-  .alert-list { max-height: 240px; overflow-y: auto; margin: 0 0 12px; display: flex; flex-direction: column; gap: 4px; }
-  .alert-list div { font-size: 26px; color: var(--ink-dim); padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; }
+  .modal h2 { margin: 0 0 4px; font-size: 22px; color: var(--accent); }
+  .modal p { margin: 0 0 8px; font-size: 18px; color: var(--ink-dim); line-height: 1.5; }
+  .modal .btn { padding: 7px 18px; min-width: 0; font-size: 17px; }
+  .alert-list { max-height: 200px; overflow-y: auto; margin: 0 0 8px; display: flex; flex-direction: column; gap: 4px; }
+  .alert-list div { font-size: 16px; color: var(--ink-dim); padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; }
   .alert-list div b { color: var(--ink); font-weight: 500; }
 
   /* 统计面板：统一字号并放大 */
