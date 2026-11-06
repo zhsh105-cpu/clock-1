@@ -203,24 +203,16 @@
   .day-row .t-rv { font-size: clamp(14px, 2.2vw, 18px); }
   .side-row.session-row .t-rv { font-size: clamp(20px, 3.4vw, 30px); font-weight: 700; color: var(--accent); }
 
-  /* 提示弹窗 */
-  .modal-mask {
-    position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px; left: 16px;
-    display: flex; justify-content: center; pointer-events: none; z-index: 100;
-  }
-  .modal {
-    transform: scale(0.8); transform-origin: top center;
-    pointer-events: auto; background: var(--bg-panel); border: 1px solid var(--accent);
-    border-left: 5px solid var(--accent); border-radius: 14px; padding: 10px 14px 10px;
-    width: fit-content; min-width: 0; max-width: calc(100% - 8px); text-align: center;
-    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
-  }
-  .modal h2 { margin: 0 0 4px; font-size: 22px; color: var(--accent); }
-  .modal p { margin: 0 0 8px; font-size: 18px; color: var(--ink-dim); line-height: 1.5; }
-  .modal .btn { padding: 7px 18px; min-width: 0; font-size: 17px; }
-  .alert-list { max-height: 200px; overflow-y: auto; margin: 0 0 8px; display: flex; flex-direction: column; gap: 4px; }
-  .alert-list div { font-size: 16px; color: var(--ink-dim); padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; }
-  .alert-list div b { color: var(--ink); font-weight: 500; }
+  /* 底部提示记录表单 */
+  .alert-card { padding: 10px 18px 12px; }
+  .alert-card-title { text-align: center; font-size: 18px; font-weight: 500; letter-spacing: 0.02em; padding: 2px 0 8px; }
+  .alert-table-wrap { max-height: 240px; overflow-y: auto; }
+  .alert-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 18px; }
+  .alert-table th { position: sticky; top: 0; background: var(--bg-panel); color: var(--ink-dim); font-weight: 400; font-size: 15px; letter-spacing: 0.06em; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .alert-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); color: var(--ink); }
+  .alert-table td:nth-child(2) { color: var(--accent); font-weight: 600; }
+  .alert-table tr:last-child td { border-bottom: none; }
+  .alert-empty { text-align: center; color: var(--ink-dim); font-size: 15px; padding: 10px 0; }
 
   /* 统计面板：统一字号并放大 */
   .col-side, .stats-card { --stat-fs: 18px; --stat-h: 56px; }
@@ -438,18 +430,19 @@
 
   </main>
 
-
+  <!-- 提示记录表单（底部） -->
+  <section class="card alert-card" id="alert-card">
+    <div class="alert-card-title">提示记录（每 15 分钟一次）</div>
+    <div class="alert-table-wrap" id="alert-table-wrap">
+      <table class="alert-table num">
+        <thead><tr><th>序号</th><th>累计时间</th><th>时刻</th></tr></thead>
+        <tbody id="sw-alert-body"></tbody>
+      </table>
+      <div class="alert-empty" id="alert-empty">暂无记录</div>
+    </div>
+  </section>
 
 </div>
-
-  <!-- 15 分钟提示弹窗 -->
-  <div class="modal-mask hidden" id="sw-modal" role="dialog" aria-modal="true" aria-labelledby="sw-modal-title">
-    <div class="modal">
-      <h2 id="sw-modal-title" class="num">⏰ 15:00</h2>
-      <div class="alert-list num" id="sw-alert-list"></div>
-      <button class="btn primary" id="sw-modal-ok">知道了</button>
-    </div>
-  </div>
 
 
 <script>
@@ -787,10 +780,9 @@
   // ---- 每隔 15 分钟提醒一次，并显示累计时间 ----
   const SW_ALERT_MS = 15 * 60 * 1000;
   let swAlertedCount = 0;
-  const swModal = document.getElementById('sw-modal');
-  document.getElementById('sw-modal-ok').addEventListener('click', () => {
-    swModal.classList.add('hidden');
-  });
+  const alertBody = document.getElementById('sw-alert-body');
+  const alertEmpty = document.getElementById('alert-empty');
+  const alertWrap = document.getElementById('alert-table-wrap');
 
   function swCheckAlert() {
     if (!swRunning) return;
@@ -804,16 +796,15 @@
   }
 
   function swShowAlert(ms, n) {
-    const total = fmtStopwatch(ms).main;
-    const text = total;
-    document.getElementById('sw-modal-title').textContent = '⏰ ' + total;
-    // 累计显示：每次提醒都追加一行记录，最新的在最上面
-    const list = document.getElementById('sw-alert-list');
-    const row = document.createElement('div');
-    const nowStr = new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    row.innerHTML = '<span><b>' + total + '</b></span><span>' + nowStr + '</span>';
-    list.insertBefore(row, list.firstChild);
-    swModal.classList.remove('hidden');
+    const total = fmtHMSs(ms);
+    // 累计显示：每 15 分钟追加一行，自上而下依次垂直排列、居中对称
+    const row = document.createElement('tr');
+    const nowStr = new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const idx = alertBody.children.length + 1;
+    row.innerHTML = '<td>' + idx + '</td><td>' + total + '</td><td>' + nowStr + '</td>';
+    alertBody.appendChild(row);
+    alertEmpty.style.display = 'none';
+    alertWrap.scrollTop = alertWrap.scrollHeight;
     playTick();
   }
 
@@ -882,8 +873,8 @@
     swStatus.textContent = '准备就绪';
     swLapsEl.innerHTML = '';
     swAlertedCount = 0;
-    document.getElementById('sw-alert-list').innerHTML = '';
-    swModal.classList.add('hidden');
+    alertBody.innerHTML = '';
+    alertEmpty.style.display = '';
     renderTotal();
     saveUsage();
   });
